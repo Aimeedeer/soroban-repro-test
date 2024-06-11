@@ -1,0 +1,13 @@
+[package]
+name = "soroban-repro-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+cargo_metadata = "0.18.1"
+serde = "1.0.203"
+serde_derive = "1.0.203"
+serde_json = "1.0.117"
+toml = "0.8.14"
+
