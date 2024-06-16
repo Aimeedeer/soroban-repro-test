@@ -5,11 +5,7 @@ use colored::*;
 use rand::prelude::SliceRandom;
 use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::{
-    fmt::Debug,
-    fs,
-    process::Command,
-};
+use std::{fmt::Debug, fs, process::Command};
 
 const SOROBAN_EXAMPLES_URL: &str = "https://github.com/stellar/soroban-examples.git";
 const SOROBAN_EXAMPLES_NAME: &str = "soroban-examples";
@@ -61,7 +57,7 @@ fn main() -> Result<()> {
 
 impl BuildCmd {
     pub fn run(&self, work_dir: &PathBuf) -> Result<()> {
-        let wasm_dir = work_dir.join("wasm-output");
+        let wasm_out = work_dir.join("wasm-output");
 
         let mut project_dir = PathBuf::new();
 
@@ -108,7 +104,7 @@ impl BuildCmd {
                         .green()
                         .bold()
                     );
-                    let wasm_file_path = build_package(&p, &wasm_dir)?;
+                    let wasm_file_path = build_package(&p, &wasm_out)?;
 
                     println!(
                         "{}",
@@ -126,9 +122,12 @@ impl BuildCmd {
 
 impl ReproCmd {
     pub fn run(&self, work_dir: &PathBuf) -> Result<()> {
-        // todo:
-        // return error if can't find already built wasm files
-        let wasm_files = find_wasm_files(&self.wasm)?;
+        let wasm_path = self.wasm.canonicalize()?;
+        let wasm_files = find_wasm_files(&wasm_path)?;
+
+        if wasm_files.is_empty() {
+            return Err(anyhow!("Can't find wasm files under directory {}. Please provide the right wasm directory.", self.wasm.display()));
+        }
 
         let mut project_dir = PathBuf::new();
 
@@ -138,6 +137,8 @@ impl ReproCmd {
             project_dir = work_dir.join(SOROBAN_EXAMPLES_NAME);
             clone_repo(SOROBAN_EXAMPLES_URL, &project_dir)?;
         }
+
+        project_dir = project_dir.canonicalize()?;
 
         for wasm in wasm_files {
             println!(
@@ -241,7 +242,9 @@ fn wasm_repro(wasm: &PathBuf, project_dir: &PathBuf) -> Result<()> {
 fn find_wasm_files(wasm_dir: &PathBuf) -> Result<Vec<PathBuf>> {
     let mut path_vec = Vec::<PathBuf>::new();
 
-    if wasm_dir.is_dir() {
+    if !wasm_dir.is_dir() {
+        return Err(anyhow!("Please provide the right wasm directory."));
+    } else {
         for file in fs::read_dir(wasm_dir)? {
             let file = file?;
             let file_path = file.path();
@@ -254,8 +257,6 @@ fn find_wasm_files(wasm_dir: &PathBuf) -> Result<Vec<PathBuf>> {
 
             if file_path.is_dir() {
                 find_wasm_files(&file_path)?;
-            } else {
-                println!("------------- Find file: {:?}", file_path);
             }
         }
     }
