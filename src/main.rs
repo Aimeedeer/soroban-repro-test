@@ -2,8 +2,10 @@ use anyhow::{anyhow, Result};
 use cargo_metadata::{MetadataCommand, Package};
 use clap::Parser;
 use colored::*;
+use petgraph::{algo, graph::DiGraph};
 use rand::prelude::SliceRandom;
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fmt::Debug, fs, process::Command};
 
@@ -261,7 +263,62 @@ fn find_wasm_files(wasm_dir: &PathBuf) -> Result<Vec<PathBuf>> {
         }
     }
 
+    path_vec = toposort(&path_vec)?;
+
     Ok(path_vec)
+}
+
+fn toposort(path_vec: &Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+    let mut soroban_cross_contract_a_contract = None;
+    let mut soroban_cross_contract_b_contract = None;
+    let mut soroban_atomic_swap_contract = None;
+    let mut soroban_atomic_multiswap_contract = None;
+    let mut soroban_token_contract = None;
+    let mut soroban_liquidity_pool_contract = None;
+
+    let mut deps = DiGraph::<PathBuf, ()>::new();
+    let mut node_indices = HashMap::new();
+
+    for path in path_vec {
+        let path_str = path.to_string_lossy();
+        let node_index = deps.add_node(path.clone());
+        node_indices.insert(path.clone(), node_index);
+
+        if path_str.contains("soroban_cross_contract_a_contract") {
+            soroban_cross_contract_a_contract = Some(node_index);
+        } else if path_str.contains("soroban_cross_contract_b_contract") {
+            soroban_cross_contract_b_contract = Some(node_index);
+        } else if path_str.contains("soroban_atomic_swap_contract") {
+            soroban_atomic_swap_contract = Some(node_index);
+        } else if path_str.contains("soroban_atomic_multiswap_contract") {
+            soroban_atomic_multiswap_contract = Some(node_index);
+        } else if path_str.contains("soroban_token_contract") {
+            soroban_token_contract = Some(node_index);
+        } else if path_str.contains("soroban_liquidity_pool_contract") {
+            soroban_liquidity_pool_contract = Some(node_index);
+        }
+    }
+
+    if let (Some(a), Some(b)) = (
+        soroban_cross_contract_a_contract,
+        soroban_cross_contract_b_contract,
+    ) {
+        deps.add_edge(a, b, ());
+    }
+    if let (Some(a), Some(b)) = (
+        soroban_atomic_swap_contract,
+        soroban_atomic_multiswap_contract,
+    ) {
+        deps.add_edge(a, b, ());
+    }
+    if let (Some(a), Some(b)) = (soroban_token_contract, soroban_liquidity_pool_contract) {
+        deps.add_edge(a, b, ());
+    }
+
+    let sorted = algo::toposort(&deps, None).expect("Failed running toposort.");
+    let sorted_paths = sorted.into_iter().map(|node| deps[node].clone()).collect();
+
+    Ok(sorted_paths)
 }
 
 fn clone_repo(git_url: &str, work_dir: &PathBuf) -> Result<()> {
