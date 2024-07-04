@@ -163,6 +163,7 @@ fn build_package(p: &Package, out_dir: &PathBuf) -> Result<PathBuf> {
     let rustc = get_random_rustc();
     println!("Using rustc {}", &rustc);
 
+    let rustc = "1.79.0"; // testing
     soroban_cmd.env("RUSTUP_TOOLCHAIN", &rustc);
     soroban_cmd.args([
         "run",
