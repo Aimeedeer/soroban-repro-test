@@ -1,7 +1,5 @@
 contracts = [
 "account",
-"alloc",
-"eth_abi",
 "token",
 "liquidity_pool",
 "single_offer",
