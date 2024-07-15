@@ -161,7 +161,7 @@ fn build_package(p: &Package, out_dir: &PathBuf) -> Result<PathBuf> {
     soroban_cmd.current_dir(PathBuf::from("../soroban-cli"));
 
     let rustc = get_random_rustc();
-    let rustc = "1.79.0"; // testing
+    let rustc = "1.78.0"; // testing
     println!("Using rustc {}", &rustc);
 
     soroban_cmd.env("RUSTUP_TOOLCHAIN", &rustc);
