@@ -157,13 +157,38 @@ impl ReproCmd {
 }
 
 fn build_package(p: &Package, out_dir: &PathBuf) -> Result<PathBuf> {
-    let mut soroban_cmd = Command::new("cargo");
+    let mut soroban_cmd = Command::new("../cargo/target/debug/cargo");
     soroban_cmd.current_dir(PathBuf::from("../soroban-cli"));
 
     let rustc = get_random_rustc();
     println!("Using rustc {}", &rustc);
 
     soroban_cmd.env("RUSTUP_TOOLCHAIN", &rustc);
+
+    {
+        let mut rustup_cmd = Command::new("rustup");
+        rustup_cmd.args(["toolchain", "install", &rustc]);
+        let status = rustup_cmd.status()?;
+        if !status.success() {
+            return Err(anyhow!(
+                "Failed running rustup toolchaininstall: {}",
+                status
+            ));
+        }
+
+        let mut rustup_cmd = Command::new("rustup");
+        rustup_cmd.args(["target", "add", "wasm32-unknown-unknown"]);
+        rustup_cmd.args(["--toolchain", &rustc]);
+
+        let status = rustup_cmd.status()?;
+        if !status.success() {
+            return Err(anyhow!(
+                "Failed adding target wasm32-unknown-unknown: {}",
+                status
+            ));
+        }
+    }
+
     soroban_cmd.args([
         "run",
         "contract",
@@ -191,7 +216,8 @@ fn wasm_opt(wasm: &PathBuf) -> Result<PathBuf> {
     let mut wasm_out = PathBuf::from(wasm);
     wasm_out.set_extension("optimized.wasm");
 
-    let mut soroban_cmd = Command::new("cargo");
+    //    let mut soroban_cmd = Command::new("cargo");
+    let mut soroban_cmd = Command::new("../cargo/target/debug/cargo");
     soroban_cmd.current_dir(PathBuf::from("../soroban-cli"));
     soroban_cmd.args([
         "run",
@@ -218,7 +244,8 @@ fn wasm_opt(wasm: &PathBuf) -> Result<PathBuf> {
 }
 
 fn wasm_repro(wasm: &PathBuf, project_dir: &PathBuf) -> Result<()> {
-    let mut soroban_cmd = Command::new("cargo");
+    //    let mut soroban_cmd = Command::new("cargo");
+    let mut soroban_cmd = Command::new("../cargo/target/debug/cargo");
     soroban_cmd.current_dir(PathBuf::from("../soroban-cli"));
     soroban_cmd.args([
         "run",
@@ -330,7 +357,8 @@ fn clone_repo(git_url: &str, work_dir: &PathBuf) -> Result<()> {
 }
 
 fn get_random_rustc() -> String {
-    let rustc_choices = ["1.79.0", "1.78.0", "1.77.2"];
+    //    let rustc_choices = ["1.79.0", "1.78.0", "1.77.2"];
+    let rustc_choices = ["1.80.1", "1.80.1", "1.79.0"];
     let mut rng = rand::thread_rng();
 
     let rustc = rustc_choices.choose(&mut rng).unwrap_or(&"1.79.0");
