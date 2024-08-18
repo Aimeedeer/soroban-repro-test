@@ -32,9 +32,6 @@ pub struct ReproCmd {
     /// URL to the wasm files.
     #[arg(long)]
     wasm: PathBuf,
-    /// Path to the source code.
-    #[arg(long)]
-    project: Option<PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
@@ -131,17 +128,6 @@ impl ReproCmd {
             return Err(anyhow!("Can't find wasm files under directory {}. Please provide the right wasm directory.", self.wasm.display()));
         }
 
-        let mut project_dir = PathBuf::new();
-
-        if let Some(dir) = &self.project {
-            project_dir = dir.to_path_buf();
-        } else {
-            project_dir = work_dir.join(SOROBAN_EXAMPLES_NAME);
-            clone_repo(SOROBAN_EXAMPLES_URL, &project_dir)?;
-        }
-
-        project_dir = project_dir.canonicalize()?;
-
         for wasm in wasm_files {
             println!(
                 "{}",
@@ -149,7 +135,7 @@ impl ReproCmd {
                     .green()
                     .bold()
             );
-            wasm_repro(&wasm, &project_dir)?;
+            wasm_repro(&wasm)?;
         }
 
         Ok(())
@@ -243,9 +229,8 @@ fn wasm_opt(wasm: &PathBuf) -> Result<PathBuf> {
     Ok(wasm_out)
 }
 
-fn wasm_repro(wasm: &PathBuf, project_dir: &PathBuf) -> Result<()> {
-    //    let mut soroban_cmd = Command::new("cargo");
-    let mut soroban_cmd = Command::new("../cargo/target/debug/cargo");
+fn wasm_repro(wasm: &PathBuf) -> Result<()> {
+    let mut soroban_cmd = Command::new("cargo");
     soroban_cmd.current_dir(PathBuf::from("../soroban-cli"));
     soroban_cmd.args([
         "run",
@@ -255,8 +240,6 @@ fn wasm_repro(wasm: &PathBuf, project_dir: &PathBuf) -> Result<()> {
         "repro",
         "--wasm",
         &wasm.to_string_lossy(),
-        "--repo",
-        &project_dir.to_string_lossy(),
     ]);
 
     let status = soroban_cmd.status()?;
@@ -291,7 +274,6 @@ fn find_wasm_files(wasm_dir: &PathBuf) -> Result<Vec<PathBuf>> {
     }
 
     path_vec = toposort(&path_vec)?;
-
     Ok(path_vec)
 }
 
